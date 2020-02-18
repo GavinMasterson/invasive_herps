@@ -1,19 +1,23 @@
 ---
-title: "Invasive Reptiles"
+title: "Invasive Herpetofauna"
 author: "Gavin Masterson"
 date: "29/11/2019"
 output: html_document
 ---
 
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 # Invasive Herpetofauna
 
-How many species of alien invasive herpetofauna are there globally? What are they? Where are they from? Where are they invasive? Keeping up to date with global trends and situations in reptile conservation is a challenging task. I wanted to develop a reproducible webscraping method for keeping up to date on alien/invasive reptile species. The Global Invasive Species Database ... (give biographic info and link to site's about page). 
+How many species of alien invasive herpetofauna are there globally? What are they? Where are they from? Where are they invasive? Keeping up to date with global trends and situations in herpetofaunal conservation is an ongoing challenge. Some of the most infamous invasive species are reptiles - think of the Burmese Python (*Python bivittatus*) in Florida, or the Brown Tree Snake (*Boiga irregularis*) in Guam - and amphibians - think of the Cane Toad (*Rhinella marina*) in Australia or the Common Platanna (*Xenopus laevis*) in Europe. As a herpetologist, I wanted to develop a reproducible webscraping method that will allow me to keep up to date on alien/invasive herpetofaunal species. 
 
-Full disclosure: In this project I relied heavily on the tutorial published [here](https://naturaldatasolutions.com/2018/11/28/scraping-and-visualizing-the-gisd-with-r/) by Jim Sheehan on November 28, 2018. Jim's work was incredibly useful for getting me started on this, my first webscraping project. 
+[The Global Invasive Species Database](http://www.iucngisd.org/gisd/) (GISD) is a product of the work of the IUCN's Species Survival Commission. Initial development of the GISD took place between 1998 and 2000, and the database received a functionality/cosmetic upgrade in 2004. The GISD database is an ongoing project and is curated by the work of specialists who volunteer their valuable time and expertise. More information can be found [here](http://www.iucngisd.org/gisd/about.php) on the GISD website.
 
+For the work presented below, I was inspired by [this tutorial](https://naturaldatasolutions.com/2018/11/28/scraping-and-visualizing-the-gisd-with-r/) by Jim Sheehan on November 28, 2018. Jim's work inspired me to do this, my first webscraping project, and I relied on his post for navigating the mechanics of the coding. I am grateful to him for his post.
 
 ```{r setup, include = TRUE}
-knitr::opts_chunk$set(echo = FALSE)
 library(robotstxt)  # check website scraping rules
 library(readr)  # reading data
 library(dplyr)  # "wrangling" data
@@ -35,12 +39,11 @@ kable(sp_list[1:10,]) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
+## Webscraping Invasive Herpetofauna from the GISD
 
-## Webscraping Alien Invasive Reptiles from the Global Invasive Species Database
+Herpetofaunal taxonomy  because of the historical use of subspecies.  This means that we need to allow for the possibility of species whose names contain a *generic name*, *specific name* and a *subspecific name* in the "Species" column of our dataset. For example, the Red-eared Slider is a widespread invasive that is known by the Latin name of *Trachemys scripta elegans*, where the subspecific name is "elegans". The problem here is that whenever a species has no *subspecific name*, the code below will add "+NA" to the end of the URL rendering it useless for accessing the species page.
 
-Reptile taxonomy can be frustrating because of the historical use of subspecies.  This means that we need to allow for the possibility of species whose names contain a *generic name*, *specific name* and a *subspecific name* in the "Species" column of our dataset. For example, the Red-eared Slider is a widespread invasive that is known by the Latin name of *Trachemys scripta elegans*, where the subspecific name is "elegans". The problem here is that whenever a species has no *subspecific name*, the code below will add "+NA" to the end of the URL rendering it useless for accessing the species page.
-
-```{r URLs, include = TRUE}
+```{r URLs}
 
 sp_list <- sp_list %>% 
   tidyr::separate(Species, c("genus", "species", "subspecies"), sep = " ", remove = FALSE) %>% 
@@ -59,3 +62,11 @@ sp_list$url <- str_replace(sp_list$url, pattern = coll(pattern = "+NA"), replace
 
 sp_list[c(1,15,17, 19, 40),]$url  # display a random sample of 5 URLs
 ```
+
+# Number of alien range countries for each species
+
+# Inferred date of establishment?
+
+
+
+//*[@id="ar-col"]
