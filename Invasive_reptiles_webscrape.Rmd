@@ -31,6 +31,9 @@ library(rworldmap)  # world chloropleth mapping
 ## First 10 rows of Invasive Herpetofauna
 
 ```{r import, include = TRUE}
+
+# THIS NEEDS TO BE MODIFIED TO ALLOW ME TO OBTAIN THE ADVANCED SEARCH RESULTS AUTOMATICALLY, WHERE I APPEND THE DATE AND TIME OF THE SEARCH SO THAT IT IS SAVED IN THE FILE METADATA AND CAN BE USED TO COMPARE THE RESULTS YEAR ON YEAR ETC.
+
 sp_list <- read.csv2("amrep_gisd.csv", strip.white = TRUE, stringsAsFactors = FALSE) #Not sure why it adds the 8th column with NA values
 sp_list[2:15,5] <- "Squamata"
 sp_list <- sp_list[,-8]
