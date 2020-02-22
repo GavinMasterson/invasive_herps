@@ -31,7 +31,7 @@ library(rworldmap)  # world chloropleth mapping
 ## First 10 rows of Invasive Herpetofauna
 
 ```{r import, include = TRUE}
-sp_list <- read.csv2("amrep_gisd.csv", strip.white = TRUE) #Not sure why it adds the 8th column with NA values
+sp_list <- read.csv2("amrep_gisd.csv", strip.white = TRUE, stringsAsFactors = FALSE) #Not sure why it adds the 8th column with NA values
 sp_list[2:15,5] <- "Squamata"
 sp_list <- sp_list[,-8]
               
@@ -56,12 +56,41 @@ sp_list[sample(nrow(sp_list),5),]$url  # display a random sample of 5 URLs
 
 To fix the URLs we need to snip the ends of the URLS that end in exactly "+NA". The code below has the additional step for removing "+NA" from the URLs of species that do not have a subspecific name. (Note: if you are using R in a language other than English, you should refer to documentation for the 'locale'argument of the 'coll()' function in stringr.)
 
-```{r Fixed URLs, include = TRUE}
+```{r fixed URLs, include = TRUE}
 
 sp_list$url <- str_replace(sp_list$url, pattern = coll(pattern = "+NA"), replacement = "")
 
 sp_list[c(1,15,17, 19, 40),]$url  # display a random sample of 5 URLs
 ```
+
+The URLs are now correctly specified and we can now scrape each of the species reports. As metnioned above, I'm interested in keeping up-to-date with the total number of invasive herpetofauna, where they're invasive and where they're from. The total number can already be deduced from the length of the sp_list object. Now we need to scrape the lists of countries where each species is native and where they have established. Below I use the same approach that Jim Sheehan used in the post I linked above. It involves looping across each URL in the sp_list object and selecting the correct HTML object to populate the two, pre-specified lists that are created to receive the scraped information. I have modified the object names, have not used 'tryCatch' and I have directly assigned each scrape into the relevant list.
+
+```{r scrape}
+urls <- pull(sp_list, url)
+sp_names <- pull(sp_list, Species)
+a_range <- vector(mode = "list", length = length(urls))
+n_range <- vector(mode = "list", length = length(urls))
+
+names(a_range) <- sp_names; names(n_range) <- sp_names
+
+# Scrape each URL with a 5-second delay in between each iteration
+
+for(i in 1:length(urls)){
+    a_range[[i]] <-  read_html(urls[i]) %>% 
+                html_nodes(xpath = '//*[@id="l-1st-step"]') %>% 
+                html_nodes("li") %>% 
+                html_text()
+    
+    n_range[[i]] <-  read_html(urls[i]) %>% 
+                html_nodes(xpath = '//*[@id="nr-col"]') %>% 
+                html_nodes("li") %>% 
+                html_text()
+    
+    Sys.sleep(5)
+}
+rm(i)
+```
+
 
 # Number of alien range countries for each species
 
@@ -69,4 +98,3 @@ sp_list[c(1,15,17, 19, 40),]$url  # display a random sample of 5 URLs
 
 
 
-//*[@id="ar-col"]
