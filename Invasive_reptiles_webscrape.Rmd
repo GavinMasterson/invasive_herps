@@ -5,7 +5,7 @@ date: "29/11/2019"
 output: html_document
 ---
 
-```{r global options, include = FALSE}
+```{r global options, include = TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -17,32 +17,37 @@ How many species of alien invasive herpetofauna are there globally? What are the
 
 For the work presented below, I was inspired by [this tutorial](https://naturaldatasolutions.com/2018/11/28/scraping-and-visualizing-the-gisd-with-r/) by Jim Sheehan on November 28, 2018. Jim's work inspired me to do this, my first webscraping project, and I relied on his post for navigating the mechanics of the coding. I am grateful to him for his post.
 
-```{r setup, include = TRUE}
+## Setting up 
+
+As always the first thing to do is to load the list of packages required for the project. This list usually gets built over time as you go through the project and then ends up complete by the end of the work.
+
+```{r setup}
 library(robotstxt)  # check website scraping rules
-library(readr)  # reading data
-library(dplyr)  # "wrangling" data
-library(stringr) # manipulating strings
+library(tidyverse)  # simultaneously load the stringr, dplyr, ggplot2 and readr packages
 library(rvest)  # web scraping
 library(knitr)  # HTML table creation
 library(kableExtra)  # additional HTML table formatting
+library(gganimate) # animate ggplots
 library(rworldmap)  # world chloropleth mapping
 ```
 
-## First 10 rows of Invasive Herpetofauna
+## Webscraping Invasive Herpetofauna from the GISD
 
-```{r import, include = TRUE}
+The code below imports the saved .csv file from my Advanced Search on the GISD.I limited my search to Reptiles and Amphibians and saved the search return as a .csv file named "amrep_gisd.csv". After importing the data I noticed that there were two issues. Several entries in the "Order" column are currently missing from the database. The second issue is that the importing process adds an additional column of NA values, which needs to be removed. The last two lines of code in the chunk below fill in the missing values for the "Order" column and also remove the "X" column.
 
-# THIS NEEDS TO BE MODIFIED TO ALLOW ME TO OBTAIN THE ADVANCED SEARCH RESULTS AUTOMATICALLY, WHERE I APPEND THE DATE AND TIME OF THE SEARCH SO THAT IT IS SAVED IN THE FILE METADATA AND CAN BE USED TO COMPARE THE RESULTS YEAR ON YEAR ETC.
+```{r import}
 
-sp_list <- read.csv2("amrep_gisd.csv", strip.white = TRUE, stringsAsFactors = FALSE) #Not sure why it adds the 8th column with NA values
+# IDEALLY THIS COULD BE MODIFIED TO ALLOW ME TO OBTAIN THE ADVANCED SEARCH RESULTS AUTOMATICALLY, WHERE I APPEND THE DATE AND TIME OF THE SEARCH SO THAT IT IS SAVED IN THE FILE METADATA AND CAN BE USED TO COMPARE THE RESULTS YEAR ON YEAR ETC.
+
+sp_list <- read_csv2("amrep_gisd.csv", trim_ws = TRUE) #Not sure why it adds the 8th column with NA values
+
+kable(sp_list[1:10,]) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
 sp_list[2:15,5] <- "Squamata"
 sp_list <- sp_list[,-8]
               
-kable(sp_list[1:10,]) %>% 
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
-
-## Webscraping Invasive Herpetofauna from the GISD
 
 Herpetofaunal taxonomy  because of the historical use of subspecies.  This means that we need to allow for the possibility of species whose names contain a *generic name*, *specific name* and a *subspecific name* in the "Species" column of our dataset. For example, the Red-eared Slider is a widespread invasive that is known by the Latin name of *Trachemys scripta elegans*, where the subspecific name is "elegans". The problem here is that whenever a species has no *subspecific name*, the code below will add "+NA" to the end of the URL rendering it useless for accessing the species page.
 
@@ -50,8 +55,8 @@ Herpetofaunal taxonomy  because of the historical use of subspecies.  This means
 
 sp_list <- sp_list %>% 
   tidyr::separate(Species, c("genus", "species", "subspecies"), sep = " ", remove = FALSE) %>% 
-  tidyr::unite(c(genus, species, subspecies), col="genspp", sep = "+", remove = FALSE) %>% 
-  mutate(url=paste0("http://www.iucngisd.org/gisd/speciesname/", genspp)) %>% 
+  tidyr::unite(c(genus, species, subspecies), col = "genspp", sep = "+", remove = FALSE) %>% 
+  mutate(url = paste0("http://www.iucngisd.org/gisd/speciesname/", genspp)) %>% 
   select(-genspp)
 
 sp_list[sample(nrow(sp_list),5),]$url  # display a random sample of 5 URLs
@@ -59,7 +64,7 @@ sp_list[sample(nrow(sp_list),5),]$url  # display a random sample of 5 URLs
 
 To fix the URLs we need to snip the ends of the URLS that end in exactly "+NA". The code below has the additional step for removing "+NA" from the URLs of species that do not have a subspecific name. (Note: if you are using R in a language other than English, you should refer to documentation for the 'locale'argument of the 'coll()' function in stringr.)
 
-```{r fixed URLs, include = TRUE}
+```{r fixed URLs}
 
 sp_list$url <- str_replace(sp_list$url, pattern = coll(pattern = "+NA"), replacement = "")
 
@@ -94,6 +99,68 @@ for(i in 1:length(urls)){
 rm(i)
 ```
 
+```{r tibble building}
+
+# Countries where the species is indigenous
+n_range_df <- data.frame(Species = rep(names(n_range), sapply(n_range, length)),
+                 Native_range = unlist(n_range), row.names = NULL, stringsAsFactors = FALSE)
+n_range_tbl <- inner_join(sp_list[,],n_range_df, by = "Species") %>% 
+              as_tibble()
+
+# Countries where the species has established an alien or invasive population
+a_range_df <- data.frame(Species = rep(names(a_range), sapply(a_range, length)),
+                 Alien_range = unlist(a_range), row.names = NULL, stringsAsFactors = FALSE)
+a_range_df$Alien_range <- gsub("[[:digit:]]|\\[|\\]","", a_range_df$Alien_range)
+a_range_tbl <- inner_join(sp_list[,], a_range_df, by = "Species") %>% 
+              as_tibble()
+```
+
+# Most invasive species by Family
+
+```{r herp invasion}
+inv_family <- a_range_tbl %>% 
+              group_by (Family) %>% 
+              count() %>%           #creates a column with "n" for the counts
+              rename(Tot_num_inv = n) %>% 
+              arrange(desc(Tot_num_inv))
+
+invfam_plot <-  ggplot(inv_family) + 
+                geom_col(mapping = aes(x = Family, 
+                                       y = Tot_num_inv,
+                                       fill = factor(Family))) +
+                ylab("Total number of Unique Invasions") +
+                theme(legend.position = "none",
+                      axis.text.x = element_text(angle = 90, hjust = 1))
+                
+
+ggplotly(invfam_plot, 
+          tooltip = c("Family", "Tot_num_inv")
+          )
+```
+
+
+```{r animated plot}
+
+a <- data.frame(Family = c(inv_family$Family), Tot_num_inv = rep(0,18), frame = rep('a',18))
+b <- data.frame(Family = c(inv_family$Family), Tot_num_inv = c(inv_family$Tot_num_inv), frame = rep('b',18))
+invfa_anim_df <- rbind(a,b); rm(a,b)
+
+invfam_anim <- ggplot(invfa_anim_df, aes(x = Family, y = Tot_num_inv, fill = Family)) +
+                geom_bar(stat = 'identity') + 
+                ylab("Total number of Unique Invasions") +
+                scale_x_discrete(labels= c(rep("?",18))) +
+                theme(legend.position = "none") +
+                transition_states(
+                    frame,
+                    transition_length = 2,
+                    state_length = 1,
+                    wrap = TRUE
+                )
+
+print(invfam_anim) 
+
+#anim_save("unique_invasions_by_family.gif", animation = invfam_anim)
+```
 
 # Number of alien range countries for each species
 
