@@ -22,13 +22,14 @@ For the work presented below, I was inspired by [this tutorial](https://naturald
 As always the first thing to do is to load the list of packages required for the project. This list usually gets built over time as you go through the project and then ends up complete by the end of the work.
 
 ```{r setup}
-library(robotstxt)  # check website scraping rules
-library(tidyverse)  # simultaneously load the stringr, dplyr, ggplot2 and readr packages
-library(rvest)  # web scraping
-library(knitr)  # HTML table creation
-library(kableExtra)  # additional HTML table formatting
-library(gganimate) # animate ggplots
-library(rworldmap)  # world chloropleth mapping
+library(robotstxt)    # check website scraping rules
+library(tidyverse)    # simultaneously load the stringr, dplyr, ggplot2 and readr packages
+library(rvest)        # web scraping
+library(knitr)        # HTML table creation
+library(kableExtra)   # additional HTML table formatting
+library(plotly)       # interactive plots
+library(gganimate)    # animate ggplots
+library(rworldmap)    # world chloropleth mapping
 ```
 
 ## Webscraping Invasive Herpetofauna from the GISD
@@ -117,35 +118,54 @@ a_range_tbl <- inner_join(sp_list[,], a_range_df, by = "Species") %>%
 
 # Most invasive species by Family
 
+One important consideration in invasion science is the fact that closely-related species are known to share biological, behavioural and ecological characteristics. Because of this, when a species becomes invasive it is a good rule-of-thumb to treat closely-related species with extreme caution. So let's first have a look at which herpetofaunal families have already demonstrated invasive potential, how many species in each family have already established populations outside their natural range, and how many total unique invasions each family is repsonsible for.
+
 ```{r herp invasion}
+
+sp_fam <- a_range_tbl %>% 
+          group_by(Family) %>% 
+          tally(n_distinct(Species), name = "Total_species")     #Counts the number of species in each Family 
+
 inv_family <- a_range_tbl %>% 
               group_by (Family) %>% 
-              count() %>%           #creates a column with "n" for the counts
-              rename(Tot_num_inv = n) %>% 
-              arrange(desc(Tot_num_inv))
-
+              count(name = "Total_invasions") %>%                #creates a column called "Total_invasions" for the counts
+              inner_join(sp_fam, by = "Family") %>% 
+              arrange(desc(Total_invasions))
+              
 invfam_plot <-  ggplot(inv_family) + 
                 geom_col(mapping = aes(x = Family, 
-                                       y = Tot_num_inv,
-                                       fill = factor(Family))) +
+                                       y = Total_invasions,
+                                       fill = factor(Family),
+                                       text = paste('Family:', Family,
+                                                    '<br> Total Unique Invasions:', Total_invasions))) +
                 ylab("Total number of Unique Invasions") +
                 theme(legend.position = "none",
                       axis.text.x = element_text(angle = 90, hjust = 1))
                 
-
 ggplotly(invfam_plot, 
-          tooltip = c("Family", "Tot_num_inv")
+          tooltip = "text"
           )
 ```
 
+# Number of alien range countries for each species
+
+# Issues I encountered
+Family names in the GISD database appear to be out of date for some families. I'm not sure how often the database gets updated with taxonomic information. Contact the administrator?
+
+
+# Inferred date of establishment?
+
+# Appendix
+
+I made an animated version of the Total Unique Invasions bar chart to post to my Twitter account on 25 Feb 2020. This is the code for generating the animated version with the Family names removed from the X-axis. The biggest difference is that you need to add a variable that specifies the states of the chart during animation. In this case I added a variable called "Frame" with two states - 0 invasions or all invasions. I had to create a dataframe with zero invasions for all families and then join them together for the plot. 
 
 ```{r animated plot}
 
-a <- data.frame(Family = c(inv_family$Family), Tot_num_inv = rep(0,18), frame = rep('a',18))
-b <- data.frame(Family = c(inv_family$Family), Tot_num_inv = c(inv_family$Tot_num_inv), frame = rep('b',18))
+a <- data.frame(Family = c(inv_family$Family), Total_invasions = rep(0,18), frame = rep('a',18))
+b <- data.frame(Family = c(inv_family$Family), Total_invasions = c(inv_family$Total_invasions), frame = rep('b',18))
 invfa_anim_df <- rbind(a,b); rm(a,b)
 
-invfam_anim <- ggplot(invfa_anim_df, aes(x = Family, y = Tot_num_inv, fill = Family)) +
+invfam_anim <- ggplot(invfa_anim_df, aes(x = Family, y = Total_invasions, fill = Family)) +
                 geom_bar(stat = 'identity') + 
                 ylab("Total number of Unique Invasions") +
                 scale_x_discrete(labels= c(rep("?",18))) +
@@ -162,9 +182,8 @@ print(invfam_anim)
 #anim_save("unique_invasions_by_family.gif", animation = invfam_anim)
 ```
 
-# Number of alien range countries for each species
 
-# Inferred date of establishment?
+
 
 
 
