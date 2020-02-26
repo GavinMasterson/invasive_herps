@@ -47,6 +47,7 @@ kable(sp_list[1:10,]) %>%
 
 sp_list[2:15,5] <- "Squamata"
 sp_list <- sp_list[,-8]
+#sp_list <- str_replace(sp_list,"\wPolychrotidae\w","Dactyloidae")
               
 ```
 
@@ -116,7 +117,7 @@ a_range_tbl <- inner_join(sp_list[,], a_range_df, by = "Species") %>%
               as_tibble()
 ```
 
-# Most invasive species by Family
+# Most Invasive Families
 
 One important consideration in invasion science is the fact that closely-related species are known to share biological, behavioural and ecological characteristics. Because of this, when a species becomes invasive it is a good rule-of-thumb to treat closely-related species with extreme caution. So let's first have a look at which herpetofaunal families have already demonstrated invasive potential, how many species in each family have already established populations outside their natural range, and how many total unique invasions each family is repsonsible for.
 
