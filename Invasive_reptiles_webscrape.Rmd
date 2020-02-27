@@ -5,7 +5,7 @@ date: "29/11/2019"
 output: html_document
 ---
 
-```{r global options, include = TRUE}
+```{r global options}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -21,7 +21,7 @@ For the work presented below, I was inspired by [this tutorial](https://naturald
 
 As always the first thing to do is to load the list of packages required for the project. This list usually gets built over time as you go through the project and then ends up complete by the end of the work.
 
-```{r setup}
+```{r setup, message = FALSE}
 library(robotstxt)    # check website scraping rules
 library(tidyverse)    # simultaneously load the stringr, dplyr, ggplot2 and readr packages
 library(rvest)        # web scraping
@@ -40,15 +40,15 @@ The code below imports the saved .csv file from my Advanced Search on the GISD.I
 
 # IDEALLY THIS COULD BE MODIFIED TO ALLOW ME TO OBTAIN THE ADVANCED SEARCH RESULTS AUTOMATICALLY, WHERE I APPEND THE DATE AND TIME OF THE SEARCH SO THAT IT IS SAVED IN THE FILE METADATA AND CAN BE USED TO COMPARE THE RESULTS YEAR ON YEAR ETC.
 
-sp_list <- read_csv2("amrep_gisd.csv", trim_ws = TRUE) #Not sure why it adds the 8th column with NA values
+sp_list <- read_delim("amrep_gisd.csv", trim_ws = TRUE, delim = ";") #Not sure why it adds the 8th column with NA values
+
 
 kable(sp_list[1:10,]) %>% 
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 
-sp_list[2:15,5] <- "Squamata"
 sp_list <- sp_list[,-8]
-#sp_list <- str_replace(sp_list,"\wPolychrotidae\w","Dactyloidae")
-              
+sp_list$Order[2:15] <- "Squamata"
+
 ```
 
 Herpetofaunal taxonomy  because of the historical use of subspecies.  This means that we need to allow for the possibility of species whose names contain a *generic name*, *specific name* and a *subspecific name* in the "Species" column of our dataset. For example, the Red-eared Slider is a widespread invasive that is known by the Latin name of *Trachemys scripta elegans*, where the subspecific name is "elegans". The problem here is that whenever a species has no *subspecific name*, the code below will add "+NA" to the end of the URL rendering it useless for accessing the species page.
@@ -70,7 +70,7 @@ To fix the URLs we need to snip the ends of the URLS that end in exactly "+NA". 
 
 sp_list$url <- str_replace(sp_list$url, pattern = coll(pattern = "+NA"), replacement = "")
 
-sp_list[c(1,15,17, 19, 40),]$url  # display a random sample of 5 URLs
+sp_list[c(1, 15, 17, 19, 40),]$url  # display five selected URLs
 ```
 
 The URLs are now correctly specified and we can now scrape each of the species reports. As metnioned above, I'm interested in keeping up-to-date with the total number of invasive herpetofauna, where they're invasive and where they're from. The total number can already be deduced from the length of the sp_list object. Now we need to scrape the lists of countries where each species is native and where they have established. Below I use the same approach that Jim Sheehan used in the post I linked above. It involves looping across each URL in the sp_list object and selecting the correct HTML object to populate the two, pre-specified lists that are created to receive the scraped information. I have modified the object names, have not used 'tryCatch' and I have directly assigned each scrape into the relevant list.
@@ -96,67 +96,130 @@ for(i in 1:length(urls)){
                 html_nodes("li") %>% 
                 html_text()
     
-    Sys.sleep(5)
+    Sys.sleep(2)
 }
 rm(i)
 ```
 
-```{r tibble building}
+The next step is to build the tibbles containing either the native range or alien range data in tidy format. Due to the differences in the number of native range and the alien range countries for each species, merging the two tibbles while the countries are specified individually by their names creates readability issues that I would rather sidestep here.
 
-# Countries where the species is indigenous
+### Countries where the species is indigenous
+
+```{r native range}
 n_range_df <- data.frame(Species = rep(names(n_range), sapply(n_range, length)),
                  Native_range = unlist(n_range), row.names = NULL, stringsAsFactors = FALSE)
-n_range_tbl <- inner_join(sp_list[,],n_range_df, by = "Species") %>% 
-              as_tibble()
-
-# Countries where the species has established an alien or invasive population
-a_range_df <- data.frame(Species = rep(names(a_range), sapply(a_range, length)),
-                 Alien_range = unlist(a_range), row.names = NULL, stringsAsFactors = FALSE)
-a_range_df$Alien_range <- gsub("[[:digit:]]|\\[|\\]","", a_range_df$Alien_range)
-a_range_tbl <- inner_join(sp_list[,], a_range_df, by = "Species") %>% 
-              as_tibble()
+n_range_tbl <- inner_join(sp_list, n_range_df, by = "Species") %>%
+               as_tibble()
 ```
 
-# Most Invasive Families
+### Countries where the species has established an alien or invasive population
 
-One important consideration in invasion science is the fact that closely-related species are known to share biological, behavioural and ecological characteristics. Because of this, when a species becomes invasive it is a good rule-of-thumb to treat closely-related species with extreme caution. So let's first have a look at which herpetofaunal families have already demonstrated invasive potential, how many species in each family have already established populations outside their natural range, and how many total unique invasions each family is repsonsible for.
+```{r alien range}
+a_range_df <- data.frame(Species = rep(names(a_range), sapply(a_range, length)), Alien_range = unlist(a_range), row.names = NULL, stringsAsFactors = FALSE)
+a_range_df$Alien_range <- gsub("[[:digit:]]|\\[|\\]","", a_range_df$Alien_range)
+a_range_tbl <-  inner_join(sp_list, a_range_df, by = "Species") %>% 
+                as_tibble()
+```
 
-```{r herp invasion}
+# Analysis
+## Welcome to the world of the #HerpMafia
 
-sp_fam <- a_range_tbl %>% 
+Closely-related species are known to share biological, behavioural and ecological characteristics. This is important in invasion science because when one species establishes an invasive population it is a good rule-of-thumb to treat closely-related species with extreme caution. So let's start with a look at:
+1. which herpetofaunal families have already demonstrated invasive potential and how often,
+2. how many species in each family have established populations outside their natural range,
+3. how many total unique invasions each family is responsible for.
+4. which countries are the currently the most impacted by the #HerpMafia.
+
+### 1. Who comprises the #HerpMafia?
+
+The #HerpMafia currently consists of 43 species, from 18 families. There are six families of anuran amphibians (i.e. frogs), but no salamanders (yet?). The most infamous invasive amphibian species to date are the African Clawed Frog *Xenopus laevis* and the Cane Toad *Rhinella marina*. There are 12 reptile families, representing crocodiles, lizards and snakes. The most infamous invasive species of reptile are the Red-eared Slider *Trachemys scripta elegans* (Worldwide), the Burmese Python *Python bivittatus* (Everglades, Florida, USA) and the Brown Tree Snake *Boiga irregularis* (Guam). Thankfully, there are no records of any of the cobra (e.g. Elapidae) or viper (e.g. Viperidae, Crotalidae) families in the GISD. Snakebite is [**already enough of a burden**](https://www.who.int/snakebites/resources/s40409-017-0127-6/en/) in countries with indigenous populations of these snakes. Having to identify bites from, and source venom for an alien invasive venomous snake would be a medical and logistical nightmare with potentially serious outcomes for envenomated individuals.
+
+### 2. How many species represent for each #HerpMafia family?
+
+Eleven of the #HerpMafia families are represented by exactly one species, which make me wonder if they can be called 'families' in the #HerpMafia context... but don't discount them because as we'll see next - all it takes is one!
+
+Of the seven families for which more than one species has established an alien range population, five are reptiles and two are amphibians. The family with the most representatives is the Polychrotidae, with 14 *Anolis* species and two *Norops* species. Technically speaking these species have been assigned to the Dactyloidae family by a recent taxonomic revision (probably so they can try to dodge the invasion police!). (Refer to the Appendix for further discussion on 'Taxonomic Issues'.)
+
+```{r represent}
+
+sp_fam <- a_range_tbl %>%
+          mutate(Family = as_factor(Family)) %>% 
           group_by(Family) %>% 
-          tally(n_distinct(Species), name = "Total_species")     #Counts the number of species in each Family 
+          tally(n_distinct(Species), name = "Total_species") %>%
+          arrange(desc(Total_species))
 
-inv_family <- a_range_tbl %>% 
+sp_fam <- inner_join(x = filter(unique(sp_list[,c(4,6)])), y = sp_fam, by = "Family") %>% 
+          mutate(Family = str_replace(Family, 
+                                      pattern = coll("Polychrotidae"), 
+                                      replacement = "Dactyloidae"))
+sp_fam[,2:3]
+```
+
+### 3. How many unique invasions can be linked to each #HerpMafia family?
+
+The code below counts the number of rows for each family and then generates an interactive ggplot of the result. (Try mousing over the bars!) I call the measure "total unique invasions" because each unique species + country pair counts towards the total, even if the same country is invaded by multiple species from the same #HerpMafia family.
+
+```{r unique invasion, warning = FALSE}
+
+inv_family <- a_range_tbl %>%
+              mutate (Family = str_replace(Family, 
+                                           pattern = coll("Polychrotidae"), 
+                                           replacement = "Dactyloidae")) %>% 
               group_by (Family) %>% 
-              count(name = "Total_invasions") %>%                #creates a column called "Total_invasions" for the counts
-              inner_join(sp_fam, by = "Family") %>% 
+              count(name = "Total_invasions") 
+
+inv_family <- inner_join(x = sp_fam, y = inv_family, by = "Family") %>% 
+              mutate(Class = as_factor(Class)) %>% 
               arrange(desc(Total_invasions))
               
 invfam_plot <-  ggplot(inv_family) + 
-                geom_col(mapping = aes(x = Family, 
+                geom_col(mapping = aes(x = reorder(Family, -Total_invasions), 
                                        y = Total_invasions,
-                                       fill = factor(Family),
+                                       fill = Class,
                                        text = paste('Family:', Family,
                                                     '<br> Total Unique Invasions:', Total_invasions))) +
                 ylab("Total number of Unique Invasions") +
-                theme(legend.position = "none",
+                xlab("Family") +
+                ggtitle("Total Unique Invasions by each #HerpMafia Family") +
+                theme(legend.position = "right", 
+                      legend.title = element_blank(),
                       axis.text.x = element_text(angle = 90, hjust = 1))
+
+### NEED TO FILL BASED ON THE CLASS SO THAT AMPHIBIAN AND REPTILE FAMILIES ARE DISTINGUISHABLE - ADD CLASS TO THE inv_family TIBBLE.
                 
-ggplotly(invfam_plot, 
-          tooltip = "text"
-          )
+ggplotly(invfam_plot, tooltip = "text")
 ```
 
-# Number of alien range countries for each species
+The graph above is simple enough to interpret but needs to have the information about each family's species tally incorporated. Let's do that now. 
 
-# Issues I encountered
-Family names in the GISD database appear to be out of date for some families. I'm not sure how often the database gets updated with taxonomic information. Contact the administrator?
+```{r two plus three}
+
+```
 
 
-# Inferred date of establishment?
 
-# Appendix
+Despite being outnumbered and outrepresented, the amphibian families punch above their weight in terms of total unique invasions.
+
+## Number of alien range countries for each species
+
+
+
+
+## Appendix
+
+### Taxonomic Issues
+
+Taxonomic assignment in the Tree of Life is a neverending process of hypothesis generation and revision. Despite the availability of genetic analysis, phylogenetic revisions of reptiles and amphibians are being published annually. Family names in the GISD database appear to be out of date for some families. I'm not sure how often the database gets updated with taxonomic information, but there are other online databases that deal specifically with ongoing taxonomic changes e.g. [Amphibian Species of the World](https://amphibiansoftheworld.amnh.org/) and [The Reptile Database](http://www.reptile-database.org/), or even the [Integrated Taxonomic Information System](https://www.itis.gov/) for a broader range of taxa (although ITIS is primarily focussed on North America). These databases can be referenced as authorities if one so chooses.
+
+In an ideal world, the GISD database is updated as soon as taxonomic changes are accepted, and the GISD search results can be treated as authoritative. Realistically, the Invasive Species Specialist Group has a huge range of taxa to consider and so it is unreasonable to expect the taxonomy to be error-free. In some cases the GISD may be simultaneously ahead of and behind the other databaseswith regard to taxonomic reassignments. For example, if we examine the species *Norops grahami* the GISD appears to accept the generic reassignment from *Anolis*, while the Reptile Database notes the change on [the species page](http://reptile-database.reptarium.cz/species?genus=Anolis&species=grahami&search_param=%28%28search%3D%27anolis+grahami%27%29%29), but has not reassigned it to *Norops* in their database. For the same species though, the Reptile Database has the Family assignment specified as 'Dactyloidae' whereas the GISD does not. In the future, I might try to develop another webscraping process to check species names of herpetofauna pulled from the GISD against relevant databases and then to update the 'sp_list' data file automatically. The idiosyncracies of the various databases may undermine the necessary confidence in automating the approach. In the mean time, a simple, manual method for changing a known out-of-date classification is shown below.
+
+```{r taxonomy}
+
+sp_list <- str_replace(sp_list$Family, pattern = coll("Polychrotidae"), replacement = "Dactyloidae")
+
+```
+
+## Bonus Code Snippets
 
 I made an animated version of the Total Unique Invasions bar chart to post to my Twitter account on 25 Feb 2020. This is the code for generating the animated version with the Family names removed from the X-axis. The biggest difference is that you need to add a variable that specifies the states of the chart during animation. In this case I added a variable called "Frame" with two states - 0 invasions or all invasions. I had to create a dataframe with zero invasions for all families and then join them together for the plot. 
 
@@ -166,8 +229,11 @@ a <- data.frame(Family = c(inv_family$Family), Total_invasions = rep(0,18), fram
 b <- data.frame(Family = c(inv_family$Family), Total_invasions = c(inv_family$Total_invasions), frame = rep('b',18))
 invfa_anim_df <- rbind(a,b); rm(a,b)
 
-invfam_anim <- ggplot(invfa_anim_df, aes(x = Family, y = Total_invasions, fill = Family)) +
+invfam_anim <- ggplot(invfa_anim_df, aes(x = reorder(Family,-Total_invasions), 
+                                         y = Total_invasions, 
+                                         fill = reorder(Family,-Total_invasions))) +
                 geom_bar(stat = 'identity') + 
+                xlab("Family") +
                 ylab("Total number of Unique Invasions") +
                 scale_x_discrete(labels= c(rep("?",18))) +
                 theme(legend.position = "none") +
