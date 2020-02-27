@@ -184,7 +184,7 @@ invfam_plot <-  ggplot(inv_family) +
                 ggtitle("Total Unique Invasions by each #HerpMafia Family") +
                 theme(legend.position = "right", 
                       legend.title = element_blank(),
-                      axis.text.x = element_text(angle = 90, hjust = 1))
+                      axis.text.x = element_text(angle = 90, hjust = 1, vjust = -0.3))
 
 ggplotly(invfam_plot, tooltip = "text")
 ```
@@ -239,10 +239,12 @@ invfam_anim <- ggplot(invfa_anim_df, aes(x = reorder(Family,-Total_invasions),
                                          y = Total_invasions, 
                                          fill = reorder(Family,-Total_invasions))) +
                 geom_bar(stat = 'identity') + 
-                xlab("Family") +
-                ylab("Total number of Unique Invasions") +
-                scale_x_discrete(labels= c(rep("?",18))) +
-                theme(legend.position = "none") +
+                labs(x ="Family",
+                     y = "Total number of Unique Invasions",
+                     title = "Total Unique Invasions for each #HerpMafia Family") +
+                #scale_x_discrete(labels= c(rep("?",18))) +
+                theme(legend.position = "none",
+                      axis.text.x = element_text(angle = 90, hjust = 1)) +
                 transition_states(
                     frame,
                     transition_length = 2,
@@ -250,13 +252,25 @@ invfam_anim <- ggplot(invfa_anim_df, aes(x = reorder(Family,-Total_invasions),
                     wrap = TRUE
                 )
 
-print(invfam_anim) 
+#print(invfam_anim) 
 
-#anim_save("unique_invasions_by_family.gif", animation = invfam_anim)
+anim_save("unique_invasions_by_family_ordered.gif", animation = invfam_anim)
 ```
 
+```{r poll figure}
+poll_fig <- ggplot(inv_family) + 
+                geom_col(mapping = aes(x = Family, 
+                                       y = Total_invasions,
+                                       fill = Family,
+                                       text = paste('Family:', Family,
+                                                    '<br> Total Unique Invasions:', Total_invasions))) +
+                ylab("Total number of Unique Invasions") +
+                xlab("Family") +
+                ggtitle("Total Unique Invasions by each #HerpMafia Family") +
+                theme(legend.position = "none", 
+                      legend.title = element_blank(),
+                      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4))
 
-
-
-
+ggsave(filename = "poll_fig.png", plot = poll_fig, width = 15, height = 10, dpi = 200, units = "cm", device='png')
+```
 
