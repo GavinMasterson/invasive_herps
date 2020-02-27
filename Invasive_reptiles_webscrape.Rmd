@@ -166,10 +166,11 @@ inv_family <- a_range_tbl %>%
                                            pattern = coll("Polychrotidae"), 
                                            replacement = "Dactyloidae")) %>% 
               group_by (Family) %>% 
-              count(name = "Total_invasions") 
+              count(name = "Total_invasions")
 
 inv_family <- inner_join(x = sp_fam, y = inv_family, by = "Family") %>% 
-              mutate(Class = as_factor(Class)) %>% 
+              mutate(Class = as_factor(Class),
+                     Family = as_factor(Family)) %>% 
               arrange(desc(Total_invasions))
               
 invfam_plot <-  ggplot(inv_family) + 
@@ -185,18 +186,23 @@ invfam_plot <-  ggplot(inv_family) +
                       legend.title = element_blank(),
                       axis.text.x = element_text(angle = 90, hjust = 1))
 
-### NEED TO FILL BASED ON THE CLASS SO THAT AMPHIBIAN AND REPTILE FAMILIES ARE DISTINGUISHABLE - ADD CLASS TO THE inv_family TIBBLE.
-                
 ggplotly(invfam_plot, tooltip = "text")
 ```
 
-The graph above is simple enough to interpret but needs to have the information about each family's species tally incorporated. Let's do that now. 
+The graph above is simple enough to interpret but for a deeper understanding of herpetofaunal invasions we need to add the information about each family's species tally. Let's do that now. 
 
 ```{r two plus three}
 
+XYplot <- ggplot(inv_family) +
+          geom_point(mapping = aes(x = Total_species,
+                                   y = Total_invasions,
+                                   colour = Class)) +
+          labs(title = "Scatterplot of Species vs Unique Invasions",
+               x = "Invasive Species per Family",
+               y = "Total Unique Invasions")
+          
+XYplot
 ```
-
-
 
 Despite being outnumbered and outrepresented, the amphibian families punch above their weight in terms of total unique invasions.
 
