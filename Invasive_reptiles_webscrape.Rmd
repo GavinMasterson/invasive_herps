@@ -46,11 +46,6 @@ sp_list <- sp_list[,-8]
 kable(sp_list[1:10,]) %>% 
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 
-sp_list %>% 
-  filter(!complete.cases(.)) %>% 
-  select(Species)
-
-
 sp_list$Order[2:15] <- "Squamata"
 
 ```
@@ -226,6 +221,20 @@ sp_list <- str_replace(sp_list$Family, pattern = coll("Polychrotidae"), replacem
 
 ```
 
+```{r taxize, message = FALSE}
+library(taxize)
+#Import csv with missing entries and incorrect Family for Anolis
+sp_list <- read_delim("amrep_gisd.csv", trim_ws = TRUE, delim = ";") #Not sure why it adds the 8th column with NA values
+sp_list <- sp_list[,-8]
+
+tax_NA <- sp_list %>% 
+              filter(!complete.cases(.)) %>% 
+              pull(Species)
+
+herp_itis <- classification(sp_list$Species, db = 'itis')
+
+```
+
 ## Bonus Code Snippets
 
 I made an animated version of the Total Unique Invasions bar chart to post to my Twitter account on 25 Feb 2020. This is the code for generating the animated version with the Family names removed from the X-axis. The biggest difference is that you need to add a variable that specifies the states of the chart during animation. In this case I added a variable called "Frame" with two states - 0 invasions or all invasions. I had to create a dataframe with zero invasions for all families and then join them together for the plot. 
@@ -274,4 +283,5 @@ poll_fig <- ggplot(inv_family) +
 
 #ggsave(filename = "poll_fig.png", plot = poll_fig, width = 15, height = 10, dpi = 200, units = "cm", device='png')
 ```
+
 
