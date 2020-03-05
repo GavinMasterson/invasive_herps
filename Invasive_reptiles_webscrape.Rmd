@@ -17,7 +17,7 @@ How many species of alien invasive herpetofauna are there globally? What are the
 
 For the work presented below, I was inspired by [this tutorial](https://naturaldatasolutions.com/2018/11/28/scraping-and-visualizing-the-gisd-with-r/) by Jim Sheehan on November 28, 2018. Jim's work inspired me to do this, my first webscraping project, and I relied on his post for navigating the mechanics of the coding. I am grateful to him for his post.
 
-## Setting up 
+## Setting up
 
 As always the first thing to do is to load the list of packages required for the project. This list usually gets built over time as you go through the project and then ends up complete by the end of the work.
 
@@ -41,12 +41,16 @@ The code below imports the saved .csv file from my Advanced Search on the GISD.I
 # IDEALLY THIS COULD BE MODIFIED TO ALLOW ME TO OBTAIN THE ADVANCED SEARCH RESULTS AUTOMATICALLY, WHERE I APPEND THE DATE AND TIME OF THE SEARCH SO THAT IT IS SAVED IN THE FILE METADATA AND CAN BE USED TO COMPARE THE RESULTS YEAR ON YEAR ETC.
 
 sp_list <- read_delim("amrep_gisd.csv", trim_ws = TRUE, delim = ";") #Not sure why it adds the 8th column with NA values
-
+sp_list <- sp_list[,-8]
 
 kable(sp_list[1:10,]) %>% 
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 
-sp_list <- sp_list[,-8]
+sp_list %>% 
+  filter(!complete.cases(.)) %>% 
+  select(Species)
+
+
 sp_list$Order[2:15] <- "Squamata"
 
 ```
@@ -56,10 +60,10 @@ Herpetofaunal taxonomy  because of the historical use of subspecies.  This means
 ```{r URLs}
 
 sp_list <- sp_list %>% 
-  tidyr::separate(Species, c("genus", "species", "subspecies"), sep = " ", remove = FALSE) %>% 
-  tidyr::unite(c(genus, species, subspecies), col = "genspp", sep = "+", remove = FALSE) %>% 
-  mutate(url = paste0("http://www.iucngisd.org/gisd/speciesname/", genspp)) %>% 
-  select(-genspp)
+              separate(Species, c("genus", "species", "subspecies"), sep = " ", remove = FALSE) %>% 
+              unite(c(genus, species, subspecies), col = "genspp", sep = "+", remove = FALSE) %>% 
+              mutate(url = paste0("http://www.iucngisd.org/gisd/speciesname/", genspp)) %>% 
+              select(-genspp)
 
 sp_list[sample(nrow(sp_list),5),]$url  # display a random sample of 5 URLs
 ```
@@ -73,7 +77,7 @@ sp_list$url <- str_replace(sp_list$url, pattern = coll(pattern = "+NA"), replace
 sp_list[c(1, 15, 17, 19, 40),]$url  # display five selected URLs
 ```
 
-The URLs are now correctly specified and we can now scrape each of the species reports. As metnioned above, I'm interested in keeping up-to-date with the total number of invasive herpetofauna, where they're invasive and where they're from. The total number can already be deduced from the length of the sp_list object. Now we need to scrape the lists of countries where each species is native and where they have established. Below I use the same approach that Jim Sheehan used in the post I linked above. It involves looping across each URL in the sp_list object and selecting the correct HTML object to populate the two, pre-specified lists that are created to receive the scraped information. I have modified the object names, have not used 'tryCatch' and I have directly assigned each scrape into the relevant list.
+The URLs are now correctly specified and we can now scrape each of the species reports. As metnioned above, I am interested in keeping up-to-date with the total number of invasive herpetofauna, where they're invasive and where they're from. The total number can already be deduced from the length of the sp_list object. Now we need to scrape the lists of countries where each species is native and where they have established. Below I use the same approach that Jim Sheehan used in the post I linked above. It involves looping across each URL in the sp_list object and selecting the correct HTML object to populate the two, pre-specified lists that are created to receive the scraped information. I have modified the object names, have not used 'tryCatch' and I have directly assigned each scrape into the relevant list.
 
 ```{r scrape}
 urls <- pull(sp_list, url)
@@ -116,7 +120,7 @@ n_range_tbl <- inner_join(sp_list, n_range_df, by = "Species") %>%
 
 ```{r alien range}
 a_range_df <- data.frame(Species = rep(names(a_range), sapply(a_range, length)), Alien_range = unlist(a_range), row.names = NULL, stringsAsFactors = FALSE)
-a_range_df$Alien_range <- gsub("[[:digit:]]|\\[|\\]","", a_range_df$Alien_range)
+a_range_df$Alien_range <- str_replace(a_range_df$Alien_range, pattern = "\\[[:digit:]+\\]\\s?", "")
 a_range_tbl <-  inner_join(sp_list, a_range_df, by = "Species") %>% 
                 as_tibble()
 ```
@@ -208,9 +212,6 @@ Despite being outnumbered and outrepresented, the amphibian families punch above
 
 ## Number of alien range countries for each species
 
-
-
-
 ## Appendix
 
 ### Taxonomic Issues
@@ -252,9 +253,9 @@ invfam_anim <- ggplot(invfa_anim_df, aes(x = reorder(Family,-Total_invasions),
                     wrap = TRUE
                 )
 
-#print(invfam_anim) 
+print(invfam_anim) 
 
-anim_save("unique_invasions_by_family_ordered.gif", animation = invfam_anim)
+#anim_save("unique_invasions_by_family_ordered.gif", animation = invfam_anim)
 ```
 
 ```{r poll figure}
@@ -271,6 +272,6 @@ poll_fig <- ggplot(inv_family) +
                       legend.title = element_blank(),
                       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4))
 
-ggsave(filename = "poll_fig.png", plot = poll_fig, width = 15, height = 10, dpi = 200, units = "cm", device='png')
+#ggsave(filename = "poll_fig.png", plot = poll_fig, width = 15, height = 10, dpi = 200, units = "cm", device='png')
 ```
 
