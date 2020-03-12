@@ -50,7 +50,7 @@ sp_list$Order[2:15] <- "Squamata"
 
 ```
 
-Herpetofaunal taxonomy  because of the historical use of subspecies.  This means that we need to allow for the possibility of species whose names contain a *generic name*, *specific name* and a *subspecific name* in the "Species" column of our dataset. For example, the Red-eared Slider is a widespread invasive that is known by the Latin name of *Trachemys scripta elegans*, where the subspecific name is "elegans". The problem here is that whenever a species has no *subspecific name*, the code below will add "+NA" to the end of the URL rendering it useless for accessing the species page.
+Herpetofaunal taxonomy is quirky because of the historical use of subspecies. This means that we need to allow for the possibility of species whose names contain a *generic name*, *specific name* and a *subspecific name* in the "Species" column of our dataset. For example, the Red-eared Slider is a widespread invasive that is known by the Latin name of *Trachemys scripta elegans*, where the subspecific name is "elegans". The problem here is that whenever a species has no *subspecific name*, the code below will add "+NA" to the end of the URL rendering it useless for accessing the species page.
 
 ```{r URLs}
 
@@ -188,19 +188,17 @@ invfam_plot <-  ggplot(inv_family) +
 ggplotly(invfam_plot, tooltip = "text")
 ```
 
-The graph above is simple enough to interpret but for a deeper understanding of herpetofaunal invasions we need to add the information about each family's species tally. Let's do that now. 
+The graph above is simple enough to interpret but for a deeper understanding of herpetofaunal invasions we need to add the information about each family's species tally. Let's do that now.
 
 ```{r two plus three}
 
-XYplot <- ggplot(inv_family) +
+(XYplot <- ggplot(inv_family) +
           geom_point(mapping = aes(x = Total_species,
                                    y = Total_invasions,
                                    colour = Class)) +
           labs(title = "Scatterplot of Species vs Unique Invasions",
                x = "Invasive Species per Family",
-               y = "Total Unique Invasions")
-          
-XYplot
+               y = "Total Unique Invasions"))
 ```
 
 Despite being outnumbered and outrepresented, the amphibian families punch above their weight in terms of total unique invasions.
