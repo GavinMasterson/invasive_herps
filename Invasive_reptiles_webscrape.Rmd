@@ -15,7 +15,7 @@ How many species of alien invasive herpetofauna are there globally? What are the
 
 [The Global Invasive Species Database](http://www.iucngisd.org/gisd/) (GISD) is a product of the work of the IUCN's Species Survival Commission. Initial development of the GISD took place between 1998 and 2000, and the database received a functionality/cosmetic upgrade in 2004. The GISD database is an ongoing project and is curated by the work of specialists who volunteer their valuable time and expertise. More information can be found [here](http://www.iucngisd.org/gisd/about.php) on the GISD website.
 
-For the work presented below, I was inspired by [this tutorial](https://naturaldatasolutions.com/2018/11/28/scraping-and-visualizing-the-gisd-with-r/) by Jim Sheehan on November 28, 2018. Jim's work inspired me to do this, my first webscraping project, and I relied on his post for navigating the mechanics of the coding. I am grateful to him for his post.
+For the work presented below, I was inspired by [this tutorial](https://naturaldatasolutions.com/2018/11/28/scraping-and-visualizing-the-gisd-with-r/) by Jim Sheehan on November 28, 2018. Jim's work facilitated this - my first webscraping project - and I relied on his post for the mechanics of the coding. I am grateful to him for his post.
 
 ## Setting up
 
@@ -27,6 +27,7 @@ library(tidyverse)    # simultaneously load the stringr, dplyr, ggplot2 and read
 library(rvest)        # web scraping
 library(knitr)        # HTML table creation
 library(kableExtra)   # additional HTML table formatting
+library(purrr)        # mostly used for the map* functions
 library(plotly)       # interactive plots
 library(gganimate)    # animate ggplots
 library(rworldmap)    # world chloropleth mapping
@@ -34,29 +35,23 @@ library(rworldmap)    # world chloropleth mapping
 
 ## Webscraping Invasive Herpetofauna from the GISD
 
-The code below imports the saved .csv file from my Advanced Search on the GISD.I limited my search to Reptiles and Amphibians and saved the search return as a .csv file named "amrep_gisd.csv". After importing the data I noticed that there were two issues. Several entries in the "Order" column are currently missing from the database. The second issue is that the importing process adds an additional column of NA values, which needs to be removed. The last two lines of code in the chunk below fill in the missing values for the "Order" column and also remove the "X" column.
+The code below imports the saved .csv file from my Advanced Search on the GISD.I limited my search to Reptiles and Amphibians and saved the search return as a .csv file named "amrep_gisd.csv". After importing the data I noticed that there were two issues. Several entries in the "Order" column are currently missing from the database. The second issue is that the importing process adds an additional column of NA values, which needs to be removed. The last two lines of code in the chunk below generate a table of a random sample of 10 of the species. The table is just to give us a quick glance of what the data look like, so the presentation order of the species is not important in this case.
 
-```{r import}
+```{r import, warning = FALSE, message = FALSE}
 
-# IDEALLY THIS COULD BE MODIFIED TO ALLOW ME TO OBTAIN THE ADVANCED SEARCH RESULTS AUTOMATICALLY, WHERE I APPEND THE DATE AND TIME OF THE SEARCH SO THAT IT IS SAVED IN THE FILE METADATA AND CAN BE USED TO COMPARE THE RESULTS YEAR ON YEAR ETC.
+sp_list <- read_delim("amrep_gisd.csv", trim_ws = TRUE, delim = ";") %>% .[,-8] # import .csv and remove X8 column of "NA" values
 
-sp_list <- read_delim("amrep_gisd.csv", trim_ws = TRUE, delim = ";") #Not sure why it adds the 8th column with NA values
-sp_list <- sp_list[,-8]
-
-kable(sp_list[1:10,]) %>% 
+kable(sp_list[sample(nrow(sp_list),10),]) %>% 
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
-
-sp_list$Order[2:15] <- "Squamata"
-
 ```
 
-Herpetofaunal taxonomy is quirky because of the historical use of subspecies. This means that we need to allow for the possibility of species whose names contain a *generic name*, *specific name* and a *subspecific name* in the "Species" column of our dataset. For example, the Red-eared Slider is a widespread invasive that is known by the Latin name of *Trachemys scripta elegans*, where the subspecific name is "elegans". The problem here is that whenever a species has no *subspecific name*, the code below will add "+NA" to the end of the URL rendering it useless for accessing the species page.
+Herpetofaunal taxonomy is quirky because of the historical use of subspecies. This means that we need to allow for the possibility of species whose names contain a *generic name*, *specific epithet* and a *subspecific epithet* in the "Species" column of our dataset. For example, the Red-eared Slider is a widespread invasive that is known by the Latin name of *Trachemys scripta elegans*, where the subspecific epithet is "elegans". The problem here is that whenever a species has no *subspecific epithet*, the code below will add "+NA" to the end of the URL rendering it useless for accessing the page of that species.
 
-```{r URLs}
+```{r URLs, warning = FALSE}
 
 sp_list <- sp_list %>% 
-              separate(Species, c("genus", "species", "subspecies"), sep = " ", remove = FALSE) %>% 
-              unite(c(genus, species, subspecies), col = "genspp", sep = "+", remove = FALSE) %>% 
+              separate(Species, c("Genus", "Specific_Epithet", "Subspecific_Epithet"), sep = " ", remove = FALSE) %>% 
+              unite(c(Genus, Specific_Epithet, Subspecific_Epithet), col = "genspp", sep = "+", remove = FALSE) %>% 
               mutate(url = paste0("http://www.iucngisd.org/gisd/speciesname/", genspp)) %>% 
               select(-genspp)
 
@@ -72,7 +67,7 @@ sp_list$url <- str_replace(sp_list$url, pattern = coll(pattern = "+NA"), replace
 sp_list[c(1, 15, 17, 19, 40),]$url  # display five selected URLs
 ```
 
-The URLs are now correctly specified and we can now scrape each of the species reports. As metnioned above, I am interested in keeping up-to-date with the total number of invasive herpetofauna, where they're invasive and where they're from. The total number can already be deduced from the length of the sp_list object. Now we need to scrape the lists of countries where each species is native and where they have established. Below I use the same approach that Jim Sheehan used in the post I linked above. It involves looping across each URL in the sp_list object and selecting the correct HTML object to populate the two, pre-specified lists that are created to receive the scraped information. I have modified the object names, have not used 'tryCatch' and I have directly assigned each scrape into the relevant list.
+The URLs are now correctly specified and we can now scrape each of the species reports. As metnioned above, I am interested in keeping up-to-date with the total number of invasive herpetofauna, where they're invasive and where they're from. The total number can already be deduced from the length of the sp_list object. Now we need to scrape the lists of countries where each species is native and where they have established. Below I use the same approach that Jim Sheehan used in the post I linked above. It involves looping across each URL in the sp_list object and selecting the correct HTML nodes to populate the two, pre-specified lists that are created to receive the scraped information. I have modified the object names, have not used 'tryCatch' and I have directly assigned each scrape into the relevant list.
 
 ```{r scrape}
 urls <- pull(sp_list, url)
@@ -80,7 +75,8 @@ sp_names <- pull(sp_list, Species)
 a_range <- vector(mode = "list", length = length(urls))
 n_range <- vector(mode = "list", length = length(urls))
 
-names(a_range) <- sp_names; names(n_range) <- sp_names
+names(a_range) <- sp_names 
+names(n_range) <- sp_names
 
 # Scrape each URL with a 5-second delay in between each iteration
 
@@ -95,12 +91,12 @@ for(i in 1:length(urls)){
                 html_nodes("li") %>% 
                 html_text()
     
-    Sys.sleep(2)
+    Sys.sleep(5)
 }
 rm(i)
 ```
 
-The next step is to build the tibbles containing either the native range or alien range data in tidy format. Due to the differences in the number of native range and the alien range countries for each species, merging the two tibbles while the countries are specified individually by their names creates readability issues that I would rather sidestep here.
+The next step is to build the tibbles containing either the native range or alien range data in tidy format. Due to the differences in the number of native range and the alien range countries for each species, merging the two tibbles while the countries are specified individually creates readability issues that I would rather sidestep here.
 
 ### Countries where the species is indigenous
 
@@ -115,6 +111,7 @@ n_range_tbl <- inner_join(sp_list, n_range_df, by = "Species") %>%
 
 ```{r alien range}
 a_range_df <- data.frame(Species = rep(names(a_range), sapply(a_range, length)), Alien_range = unlist(a_range), row.names = NULL, stringsAsFactors = FALSE)
+
 a_range_df$Alien_range <- str_replace(a_range_df$Alien_range, pattern = "\\[[:digit:]+\\]\\s?", "")
 a_range_tbl <-  inner_join(sp_list, a_range_df, by = "Species") %>% 
                 as_tibble()
@@ -135,23 +132,25 @@ The #HerpMafia currently consists of 43 species, from 18 families. There are six
 
 ### 2. How many species represent for each #HerpMafia family?
 
-Eleven of the #HerpMafia families are represented by exactly one species, which make me wonder if they can be called 'families' in the #HerpMafia context... but don't discount them because as we'll see next - all it takes is one!
+Eleven of the #HerpMafia families are represented by exactly one species, which makes me wonder if they can be called 'families' in the #HerpMafia context... but don't discount them because as we'll see next - all it takes is one!
 
-Of the seven families for which more than one species has established an alien range population, five are reptiles and two are amphibians. The family with the most representatives is the Polychrotidae, with 14 *Anolis* species and two *Norops* species. Technically speaking these species have been assigned to the Dactyloidae family by a recent taxonomic revision (probably so they can try to dodge the invasion police!). (Refer to the Appendix for further discussion on 'Taxonomic Issues'.)
+Of the seven families for which more than one species has established an alien range population, five are reptiles and two are amphibians. The family with the most representatives is the Polychrotidae, with 14 *Anolis* species and two *Norops* species. Technically speaking these species have been assigned to the Dactyloidae family by a recent taxonomic revision - possibly so they can try to dodge the invasion police!. (Refer to the Appendix for further discussion on 'Taxonomic Issues'.)
 
-```{r represent}
+```{r represent, warning = FALSE}
 
 sp_fam <- a_range_tbl %>%
           mutate(Family = as_factor(Family)) %>% 
           group_by(Family) %>% 
-          tally(n_distinct(Species), name = "Total_species") %>%
-          arrange(desc(Total_species))
+          tally(n_distinct(Species), name = "Total_species")
 
-sp_fam <- inner_join(x = filter(unique(sp_list[,c(4,6)])), y = sp_fam, by = "Family") %>% 
-          mutate(Family = str_replace(Family, 
+#NEED TO LOOK AT WHETHER THIS IS WORTH INCLUDING - IT MEANS THAT THINGS CAN BREAK IF YOU RERUN THIS SECTION OF CODE
+
+(sp_fam <- inner_join(x = filter(unique(sp_list[,c(7,9)])), y = sp_fam, by = "Family") %>% 
+          mutate(Family = as_factor(str_replace(Family, 
                                       pattern = coll("Polychrotidae"), 
-                                      replacement = "Dactyloidae"))
-sp_fam[,2:3]
+                                      replacement = "Dactyloidae"))) %>% 
+          arrange(desc(Total_species)))
+
 ```
 
 ### 3. How many unique invasions can be linked to each #HerpMafia family?
@@ -178,6 +177,7 @@ invfam_plot <-  ggplot(inv_family) +
                                        fill = Class,
                                        text = paste('Family:', Family,
                                                     '<br> Total Unique Invasions:', Total_invasions))) +
+                scale_fill_manual(values =c("darkgoldenrod1","chartreuse3")) +
                 ylab("Total number of Unique Invasions") +
                 xlab("Family") +
                 ggtitle("Total Unique Invasions by each #HerpMafia Family") +
