@@ -1,0 +1,49 @@
+---
+title: "Taxonomic divergence"
+author: "Gavin Masterson"
+date: "14/03/2020"
+output: html_document
+---
+
+# Setting the scene
+
+In a [previous blog post]() on the Global Invasive Species Database (GISD), I demonstrated the use of a webscraper and #rstats to take a quick look at the topic of invasive herpetofauna (or the #HerpMafia, as I dubbed them). During the data import and analysis, I encountered several issues that are common in taxonomic databases. Firstly, some species had missing values ("NA") for one or more database variables. In my case, the missing values were not difficult to determine and input manually, but what if I had been processing a species list of several hundred species? How would I approach the problem of taxonomic verification in an automated manner? Secondly, I discovered that species in my list of invasive herpetofauna had undergone taxonomic reassignment, either at species, genus or even family level. How should a biologist deal with this issue when communicating the results of an analysis or data visualisation such as mine? Thirdly, there is additional uncertainty in taxonomic status when dealing with sub-populations of a species such as invasive populations. Invasive populations of a species that is later revised, split or lumped with another species using an analysis conducted in the species' native range does not necessarily directly translate to a revised taxonomic status for the invasive population. These issues are the topic of this post.
+
+# Reality check
+
+In an **ideal world**, the GISD database (or whichever database you regularly use) is updated as soon as taxonomic changes are accepted, and the search results can be treated as authoritative. Realistically, for any database with  vast number of taxa to consider it is unreasonable to expect the taxonomy of all species to be up-to-date and error-free. As I discovered in my invasive herpetofauna investigation, for some species the GISD may be simultaneously ahead of and behind the other databases regarding taxonomic assignments and classifications. For example, for *Norops grahami* the GISD appears to accept the generic reassignment from *Anolis*, while the Reptile Database notes the change on [the species page](http://reptile-database.reptarium.cz/species?genus=Anolis&species=grahami&search_param=%28%28search%3D%27anolis+grahami%27%29%29), but has not reassigned it to *Norops* in their database. For the same species though, the Reptile Database has the Family assignment specified as Dactyloidae whereas the GISD still assigns it to the Polychrotidae. Deciding what to do in situations like this is always tricky, but a simple best case scenario is to be able to indicate these uncertainties to the readers of your research/communication. Thankfully there are two R packages that can be used query, and then compare, the world's major taxonomic databases from the comfort of your R command line.
+
+# {taxadb} and {taxize}
+
+```{r setup, warning = FALSE, message = FALSE}
+library(taxadb)
+library(taxize)
+library(dplyr)
+```
+
+
+
+```{r taxonomy}
+
+sp_list <- str_replace(sp_list$Family, pattern = coll("Polychrotidae"), replacement = "Dactyloidae")
+
+```
+
+```{r taxize, message = FALSE}
+
+#Import csv with missing entries and incorrect Family for Anolis
+sp_list <- read_delim("amrep_gisd.csv", trim_ws = TRUE, delim = ";") %>% .[,-8]
+
+tax_NA <- sp_list %>% 
+              filter(!complete.cases(.)) %>% 
+              pull(Species)
+
+herp_itis <- classification(sp_list$Species, db = 'itis')
+
+```
+
+# Taxonomic Issues in Biological Data Science Projects
+
+Taxonomic assignment in the 'Tree of Life' is a neverending process of hypothesis generation and revision. The technology for genomic sequencing and analysis has been available for more than 40 years, and yet phylogenetic revisions of reptiles and amphibians are being published annually. Processing these revisions places a heavy burden on database managers and they do an often thankless task with great dedication. The nett result is that each database varies from others in unpredictable ways. If this post achieves anything, I hope it gives you a deep appreciation for the fact that we are learning new facts about the interrelatedness of all organisms with every phylogenetic analysis conducted. Secondly, I want to highlight the incredible work being done by all taxonomic database managers in their efforts to curate the relevant taxonomic changes (read: taxonomic hypotheses) on an ongoing basis. Their work makes my biological research infinitely easier. A huge thank you to you all!
+
+I am not sure how often the database gets updated with taxonomic information, but there are other online databases that deal specifically with ongoing taxonomic changes e.g. [Amphibian Species of the World](https://amphibiansoftheworld.amnh.org/) and [The Reptile Database](http://www.reptile-database.org/), or even the [Integrated Taxonomic Information System](https://www.itis.gov/) for a broader range of taxa (although ITIS is primarily focussed on North America).

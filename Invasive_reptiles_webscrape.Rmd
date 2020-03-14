@@ -143,7 +143,7 @@ sp_fam <- a_range_tbl %>%
           group_by(Family) %>% 
           tally(n_distinct(Species), name = "Total_species")
 
-#NEED TO LOOK AT WHETHER THIS IS WORTH INCLUDING - IT MEANS THAT THINGS CAN BREAK IF YOU RERUN THIS SECTION OF CODE
+#NEED TO LOOK AT WHETHER THIS IS WORTH INCLUDING - IT MEANS THAT THINGS CAN BREAK IF YOU RERUN THIS SECTION OF CODE AND NOT THE WHOLE CHUNK
 
 (sp_fam <- inner_join(x = filter(unique(sp_list[,c(7,9)])), y = sp_fam, by = "Family") %>% 
           mutate(Family = as_factor(str_replace(Family, 
@@ -205,33 +205,8 @@ Despite being outnumbered and outrepresented, the amphibian families punch above
 
 ## Number of alien range countries for each species
 
-## Appendix
 
-### Taxonomic Issues
-
-Taxonomic assignment in the Tree of Life is a neverending process of hypothesis generation and revision. Despite the availability of genetic analysis, phylogenetic revisions of reptiles and amphibians are being published annually. Family names in the GISD database appear to be out of date for some families. I'm not sure how often the database gets updated with taxonomic information, but there are other online databases that deal specifically with ongoing taxonomic changes e.g. [Amphibian Species of the World](https://amphibiansoftheworld.amnh.org/) and [The Reptile Database](http://www.reptile-database.org/), or even the [Integrated Taxonomic Information System](https://www.itis.gov/) for a broader range of taxa (although ITIS is primarily focussed on North America). These databases can be referenced as authorities if one so chooses.
-
-In an ideal world, the GISD database is updated as soon as taxonomic changes are accepted, and the GISD search results can be treated as authoritative. Realistically, the Invasive Species Specialist Group has a huge range of taxa to consider and so it is unreasonable to expect the taxonomy to be error-free. In some cases the GISD may be simultaneously ahead of and behind the other databaseswith regard to taxonomic reassignments. For example, if we examine the species *Norops grahami* the GISD appears to accept the generic reassignment from *Anolis*, while the Reptile Database notes the change on [the species page](http://reptile-database.reptarium.cz/species?genus=Anolis&species=grahami&search_param=%28%28search%3D%27anolis+grahami%27%29%29), but has not reassigned it to *Norops* in their database. For the same species though, the Reptile Database has the Family assignment specified as 'Dactyloidae' whereas the GISD does not. In the future, I might try to develop another webscraping process to check species names of herpetofauna pulled from the GISD against relevant databases and then to update the 'sp_list' data file automatically. The idiosyncracies of the various databases may undermine the necessary confidence in automating the approach. In the mean time, a simple, manual method for changing a known out-of-date classification is shown below.
-
-```{r taxonomy}
-
-sp_list <- str_replace(sp_list$Family, pattern = coll("Polychrotidae"), replacement = "Dactyloidae")
-
-```
-
-```{r taxize, message = FALSE}
-library(taxize)
-#Import csv with missing entries and incorrect Family for Anolis
-sp_list <- read_delim("amrep_gisd.csv", trim_ws = TRUE, delim = ";") #Not sure why it adds the 8th column with NA values
-sp_list <- sp_list[,-8]
-
-tax_NA <- sp_list %>% 
-              filter(!complete.cases(.)) %>% 
-              pull(Species)
-
-herp_itis <- classification(sp_list$Species, db = 'itis')
-
-```
+# Appendix
 
 ## Bonus Code Snippets
 

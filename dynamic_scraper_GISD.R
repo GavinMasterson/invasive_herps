@@ -19,7 +19,8 @@ URL <- "http://www.iucngisd.org/gisd/"
 #   --name selenium \
 #   -p 4444:4444 \
 #   -p 5900:5900 \
-#   -v $(pwd):/home/seluser/Downloads \
+#   -v ${PwD}:C:/invasive_herps/downloads \
+#   -v ${PwD}:/home/seluser/Downloads \
 #   selenium/standalone-chrome-debug:3.141
 
 # Verify that it is running.
