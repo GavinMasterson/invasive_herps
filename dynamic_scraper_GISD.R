@@ -6,11 +6,22 @@ URL <- "http://www.iucngisd.org/gisd/"
 
 # Start the Docker image (if you don't already have one running!).
 # Open docker in the working directory for the project (ideally)
- docker run -d \
-        -p 4444:4444 \
-        -p 5900:5900 selenium/standalone-chrome-debug:3.141 \
-        -v .~Downloads
 #
+# NOTE: To mount the current folder on the container use
+#
+# - $(pwd)       [Linux or Mac]
+# - %cd%         [Windows command line (untested)]
+# - ${PWD}       [Windows PowerShell (untested)]
+#
+# NOTE: You also need to reference the *absolute* path for Downloads folder on the container, so no starting with ~.
+#
+# docker run -d --rm \
+#   --name selenium \
+#   -p 4444:4444 \
+#   -p 5900:5900 \
+#   -v $(pwd):/home/seluser/Downloads \
+#   selenium/standalone-chrome-debug:3.141
+
 # Verify that it is running.
 #
 # $ docker ps
@@ -31,6 +42,11 @@ library(RSelenium)
 
 browser <- remoteDriver(
   browserName = "chrome",
+  # NOTE: Use the following IP addresses:
+  #
+  # - 127.0.0.1 [Linux or Mac? or Windows and Docker Desktop]
+  # - 192.168.99.100 [Windows and Docker Toolbox]
+  #
   remoteServerAddr = "192.168.99.100",
   port=4444
 )
