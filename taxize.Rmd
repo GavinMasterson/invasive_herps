@@ -1,0 +1,64 @@
+---
+title: "taxize"
+author: "Gavin Masterson"
+date: "19/03/2020"
+output: html_document
+---
+```{r setup}
+library(taxize)
+library(tidyverse)
+library(dplyr)
+```
+
+## {taxize}
+- introduction
+- API call demo
+- global names resolver (using species name data from 2006?)
+
+If you love taxonomic information and it at the tip of your fingertips, `taxize` is the package for you. With `taxize` we can perform queries of data downloaded using the API of various taxonomic databases. To demonstrate the similarity between `taxize` and `taxadb`, I extract the ITIS classification information for all the species listed in the `GISD-query` object used above. To reduce the run time of the code chunk, I used the `classification` function to query just six of the 43 species from the `GISD-query`.
+
+```{r taxize, message = TRUE}
+tax_NA <- GISD_query %>% 
+            filter(!complete.cases(.)) %>% 
+            pull(Species)
+print(classification(GISD_query$Species[c(1,16,20,26,31,40)], db = 'itis')[1:6])
+```
+
+From the returned list we see that four of the six species have a full classification, and two do not. The data returned for *Elaphe guttata* contains just a species rank entry. This suggests that the name is just a synonym, which we know is the truth from our `taxadb` demo above. We also see that *Norops grahami* is not found in the ITIS database, which indicates a name that may be either very recent or disputed. It turns out, it's the [latter](https://en.wikipedia.org/wiki/Norops). And on the bombshell that taxonomic disagreements can get quite heated, we'll leave the GISD dataset and look at one more useful `taxize` function - `gnr_resolve`.
+
+# Out with the old...
+
+When you have an old species name or a list of old species names (or even a list of names that someone else has given you), it can be difficult to know that they are up to date. This is where `gnr-resolve` comes in. I have a list of reptile species names from a herpetofaunal survey I conducted in 2006.
+
+```{r 2006_reptile, message = FALSE}
+survey_2006 <- read_csv("rep_survey.csv")
+temp <- gnr_resolve(names = survey_2006[[1]])
+head(temp)
+```
+
+One of the very useful helper functions to `gnr_resolve` is `gnr_datasources`. Calling the function provides a tibble containing a very detailed breakdown of the datasources used to resolve the name/s supplied to `gnr_reolve`. In the code below I use `gnr_datasources` to see which datasources have been within the last 150 days. I used the call to `Sys.time` but for reproducibility I have inserted the actual system time in the code below.
+
+```{r updateTime}
+x <- format("2020-03-16 17:46:31 SAST") %>% 
+      strptime(format = "%Y-%m-%d %H:%M:%OS")
+
+y <- gnr_datasources()$updated_at %>% 
+      str_replace(.,"T"," ") %>% 
+      str_replace(.,"Z","") %>% 
+      format() %>% 
+      strptime(format = "%Y-%m-%d %H:%M:%OS")
+
+tibble(Database_Name = gnr_datasources()$title[which(difftime(x,y) < 150)], 
+       last_updated =  difftime(x,y)[(which(difftime(x,y) < 150))]) %>% 
+      kable() %>% 
+      kable_styling() %>% 
+      row_spec(row = 2, bold = TRUE, background = "DodgerBlue", color = "white")
+```
+
+Of the 12 data sources in the returned tibble, we see that there is a mixture of open source and curated taxonomic collections. We also see that our trusty ITIS database was updated 127 days ago. 
+
+```{r}
+temp %>% 
+  filter(data_source_title == "The Reptile Database")
+  
+```

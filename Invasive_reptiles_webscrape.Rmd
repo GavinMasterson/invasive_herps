@@ -50,8 +50,13 @@ Herpetofaunal taxonomy is quirky because of the historical use of subspecies. Th
 ```{r URLs, warning = FALSE}
 
 sp_list <- sp_list %>% 
-              separate(Species, c("Genus", "Specific_Epithet", "Subspecific_Epithet"), sep = " ", remove = FALSE) %>% 
-              unite(c(Genus, Specific_Epithet, Subspecific_Epithet), col = "genspp", sep = "+", remove = FALSE) %>% 
+              separate(Species, c("Genus", "Specific_Epithet", "Subspecific_Epithet"),
+                       sep = " ", 
+                       remove = FALSE) %>% 
+              unite(c(Genus, Specific_Epithet, Subspecific_Epithet), 
+                    col = "genspp", 
+                    sep = "+",
+                    remove = FALSE) %>% 
               mutate(url = paste0("http://www.iucngisd.org/gisd/speciesname/", genspp)) %>% 
               select(-genspp)
 
