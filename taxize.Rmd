@@ -4,10 +4,9 @@ author: "Gavin Masterson"
 date: "19/03/2020"
 output: html_document
 ---
-```{r setup}
+```{r setup, message = FALSE}
 library(taxize)
 library(tidyverse)
-library(dplyr)
 ```
 
 ## {taxize}
@@ -36,7 +35,7 @@ temp <- gnr_resolve(names = survey_2006[[1]])
 head(temp)
 ```
 
-One of the very useful helper functions to `gnr_resolve` is `gnr_datasources`. Calling the function provides a tibble containing a very detailed breakdown of the datasources used to resolve the name/s supplied to `gnr_reolve`. In the code below I use `gnr_datasources` to see which datasources have been within the last 150 days. I used the call to `Sys.time` but for reproducibility I have inserted the actual system time in the code below.
+One of the very useful helper functions to `gnr_resolve` is `gnr_datasources`. Calling the function provides a tibble containing a very detailed breakdown of the datasources used to resolve the name/s supplied to `gnr_reolve`. In the code below I use `gnr_datasources` to see which datasources have been updated within the last 150 days. I used the call to `Sys.time` but for reproducibility I have inserted the actual system time in the code below.
 
 ```{r updateTime}
 x <- format("2020-03-16 17:46:31 SAST") %>% 
