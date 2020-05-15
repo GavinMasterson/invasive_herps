@@ -114,6 +114,7 @@ n_range_df <- data.frame(Species = rep(names(n_range),
 
 n_range_tbl <- inner_join(sp_list, n_range_df, 
                           by = "Species") %>%
+               select(Species, Native_range, everything()) %>% 
                as_tibble()
 ```
 
@@ -133,6 +134,7 @@ a_range_df$Alien_range <- str_replace(a_range_df$Alien_range,
 a_range_tbl <-  inner_join(sp_list,
                            a_range_df,
                            by = "Species") %>% 
+                select(Species, Alien_range, everything()) %>% 
                 as_tibble()
 ```
 
@@ -147,13 +149,15 @@ Closely-related species are known to share biological, behavioural and ecologica
 
 ### 1. Who comprises the #HerpMafia?
 
-The #HerpMafia currently consists of 43 species, from 18 families. There are six families of anuran amphibians (i.e. frogs), but no salamanders (yet?). The most infamous invasive amphibian species to date are the African Clawed Frog *Xenopus laevis* and the Cane Toad *Rhinella marina*. There are 12 reptile families, representing crocodiles, lizards and snakes. The most infamous invasive species of reptile are the Red-eared Slider *Trachemys scripta elegans* (Worldwide), the Burmese Python *Python bivittatus* (Everglades, Florida, USA) and the Brown Tree Snake *Boiga irregularis* (Guam). Thankfully, there are no records of any of the cobra (e.g. Elapidae) or viper (e.g. Viperidae, Crotalidae) families in the GISD. Snakebite is [**already enough of a burden**](https://www.who.int/snakebites/resources/s40409-017-0127-6/en/) in countries with indigenous populations of these snakes. Having to identify bites from, and source venom for an alien invasive venomous snake would be a medical and logistical nightmare with potentially serious outcomes for envenomated individuals.
+The #HerpMafia currently consists of 43 species, from 18 families. There are six families of anuran amphibians (i.e. frogs), but no salamanders (yet?). The most infamous invasive amphibian species to date are the African Clawed Frog *Xenopus laevis* and the Cane Toad *Rhinella marina*. There are 12 reptile families, representing crocodiles, lizards and snakes. The most infamous invasive species of reptile are the Red-eared Slider *Trachemys scripta elegans* (Worldwide), the Burmese Python *Python bivittatus* (Everglades, Florida, USA) and the Brown Tree Snake *Boiga irregularis* (Guam). Thankfully, there are no records of any of the cobra (e.g. Elapidae) or viper (e.g. Viperidae, Crotalidae) families in the GISD. Snakebite is [**already enough of a burden**](https://www.who.int/snakebites/resources/s40409-017-0127-6/en/) in countries with indigenous populations of these snakes. Having to identify bites from, and source venom for an alien invasive venomous snake would be a medical and logistical nightmare with potentially serious outcomes for envenomated humans. 
+
+This year, Ireland recorded its [first ever hospitalisation for a venomous snakebite](https://www.iol.co.za/news/world/ireland-reports-the-first-venomous-snake-bite-in-its-history-right-before-st-patricks-day-44239335). The bite was the outcome of importing a Puff Adder (*Bitis arietans*) as a pet. The necessary antivenom was not available in Ireland and had to be shipped in from Liverpool, UK to assist in the treatment. The irony is that the bite happened just before St Patrick's Day - the day which celebrates the saint who 'drove all the snakes out of Ireland'. If the import of venomous snakes increases, Ireland may require St Patrick's skills again in the near future.
 
 ### 2. How many species represent for each #HerpMafia family?
 
-Eleven of the #HerpMafia families are represented by exactly one species, which makes me wonder if they can be called 'families' in the #HerpMafia context... but don't discount them because as we'll see next - all it takes is one!
+Eleven of the #HerpMafia families are represented by exactly one species. This makes me wonder if they can be called 'families' in the #HerpMafia context... but let us not overlook them because as we'll see next - all it takes is one!
 
-Of the seven families for which more than one species has established an alien range population, five are reptiles and two are amphibians. The family with the most representatives is the Polychrotidae, with 14 *Anolis* species and two *Norops* species. Technically speaking these species have been assigned to the Dactyloidae family by a recent taxonomic revision - possibly so they can try to dodge the invasion police!. (Refer to the Appendix for further discussion on 'Taxonomic Issues'.)
+Of the seven families for which more than one species has established an alien range population, five are reptiles and two are amphibians. The family with the most representatives is the Polychrotidae, with 14 *Anolis* species and two *Norops* species. Technically speaking these species have been reassigned to the Dactyloidae family by a recent taxonomic revision - possibly so they can try to dodge the invasion police! See [my {taxadb} blog bost](https://gavinmasterson.netlify.app/post/taxadb/) for ways to check for and resolve taxonomic revisions in data like these here.
 
 ```{r represent, warning = FALSE}
 
